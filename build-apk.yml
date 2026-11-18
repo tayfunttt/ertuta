@@ -1,0 +1,35 @@
+name: Galaxy S Cift Kamera APK Derleyici
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Depoyu Klonla
+      uses: actions/checkout@v4
+
+    - name: Java JDK 17 Kur
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    - name: Android SDK ve Gradle ile APK Derle
+      run: |
+        chmod +x gradlew || true
+        if [ ! -f "gradlew" ]; then
+          gradle wrapper
+          chmod +x gradlew
+        fi
+        ./gradlew assembleDebug --stacktrace
+
+    - name: Hazir APK Dosyasini Yukle (Indirme Linki)
+      uses: actions/upload-artifact@v4
+      with:
+        name: ertuta-biometrics-galaxy-s-apk
+        path: app/build/outputs/apk/debug/app-debug.apk
