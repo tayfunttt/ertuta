@@ -2,33 +2,27 @@ name: Build APK
 
 on:
   push:
-    branches: [ "**" ]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v4
-
-    - name: Set up Java 17
-      uses: actions/setup-java@v4
+    - uses: actions/checkout@v4
+    - uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
         java-version: '17'
-
-    - name: Setup Gradle
-      uses: gradle/actions/setup-gradle@v3
+    - uses: gradle/actions/setup-gradle@v3
       with:
         gradle-version: '8.5'
-
-    - name: Build Debug APK
-      run: gradle assembleDebug --stacktrace --no-daemon
-
+    - name: Build
+      run: |
+        PROJ_DIR=$(find . -name "settings.gradle" -exec dirname {} \; | head -n 1)
+        cd "$PROJ_DIR"
+        gradle assembleDebug --no-daemon
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
-        name: ertuta-biometrics-galaxy-s-apk
-        path: app/build/outputs/apk/debug/app-debug.apk
+        name: ertuta-galaxy-s-cift-kamera-apk
+        path: "**/*.apk"
